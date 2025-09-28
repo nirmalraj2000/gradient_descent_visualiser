@@ -42,7 +42,7 @@ export default function DescentMarker({ fn, start, lr = 0.05, stepsPerSecond = 1
   return (
     <mesh ref={meshRef} position={[xy[0], z + 0.03, xy[1]]}>
       <sphereGeometry args={[0.06, 16, 16]} />
-      <meshStandardMaterial color="green" emissive={"#330000"} emissiveIntensity={0.5} />
+      <meshStandardMaterial color="red" emissive={"#330000"} emissiveIntensity={0.5} />
     </mesh>
   )
 }
