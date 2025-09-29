@@ -15,7 +15,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.changes.outputs.should-deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for changes
+        id: changes
+        run: |
+          # Get the list of changed files
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files: $CHANGED_FILES"
+
+          # Check if only README.md was changed
+          if echo "$CHANGED_FILES" | grep -v "^README.md$" | grep -v "^$" > /dev/null; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "Deploying: Changes detected beyond README.md"
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "Skipping deployment: Only README.md was changed"
+          fi
+
   build:
+    needs: check-changes
+    if: needs.check-changes.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,7 +67,8 @@ jobs:
           path: dist
 
   deploy:
-    needs: build
+    needs: [check-changes, build]
+    if: needs.check-changes.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
