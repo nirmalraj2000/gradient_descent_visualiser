@@ -13,7 +13,7 @@ import {
 import SurfaceMesh from "./components/SurfaceMesh";
 import AxesGrid from "./components/AxesGrid";
 import DescentMarker from "./components/DescentMarker";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 const DEFAULT_LEARNING_RATE = 0.008;
 const DEFAULT_STEPS_PER_SECOND = 40;
@@ -129,6 +129,7 @@ export default function App() {
   const [customStartPosition, setCustomStartPosition] = useState<
     [number, number] | null
   >(null);
+  const [controlsEnabled, setControlsEnabled] = useState(true);
 
   const currentSurface = SURFACE_CONFIGS[selectedSurface];
   const startPosition = customStartPosition || currentSurface.startPosition;
@@ -171,8 +172,11 @@ export default function App() {
               if (event.ctrlKey) {
                 event.preventDefault();
                 event.stopPropagation();
-                // We'll handle this in the SurfaceMesh component
+                setControlsEnabled(false);
               }
+            }}
+            onPointerUp={() => {
+              setControlsEnabled(true);
             }}
           >
             <ambientLight intensity={0.6} />
@@ -221,6 +225,7 @@ export default function App() {
             </group>
 
             <OrbitControls
+              enabled={controlsEnabled}
               enableDamping
               dampingFactor={0.08}
               minDistance={2}
