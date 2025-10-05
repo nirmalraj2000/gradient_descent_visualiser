@@ -1,69 +1,65 @@
-# React + TypeScript + Vite
+# Gradient Descent Visualiser
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[Live Demo](https://nirmalraj2000.github.io/gradient_descent_visualiser/)
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Overview
 
-## Expanding the ESLint configuration
+This project is an interactive 3D visualizer for gradient descent on various mathematical surfaces. It helps you understand how gradient descent works by letting you experiment with different functions, learning rates, and starting points—all in real time.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Features
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Multiple Surfaces:**
+  - Global Minimum (simple quadratic)
+  - Saddle Point
+  - Hills and Plateau
+  - Local Minimum (multiple basins)
+  - Rosenbrock Function
+  - Rastrigin Function
+  - Ackley Function
+- **Interactive Controls:**
+  - Change the surface type from a dropdown menu
+  - Adjust the learning rate with a slider
+  - Adjust the steps per second (animation speed) with a slider
+  - Ctrl + Click anywhere on the surface to set a custom starting position for the descent
+  - Restart the descent at any time
+  - Reset to the default starting position
+- **3D Visualization:**
+  - Color-mapped surface for easy height interpretation (green = low, yellow = mid, red = high)
+  - Reference grid and axes
+  - Orbit, pan, and zoom controls (mouse/touch)
+  - Animated descent marker (ball) that follows the gradient path
+- **Responsive UI:**
+  - Works on desktop and large tablets
+  - Clean, modern interface with dark mode
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## Screenshot
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+![Gradient Descent Visualiser Screenshot](screenshot.png)
+
+_You can use your own screenshot or the one above to showcase the UI._
+
+## Getting Started
+
+Visit the live demo:
+
+👉 **[https://nirmalraj2000.github.io/gradient_descent_visualiser/](https://nirmalraj2000.github.io/gradient_descent_visualiser/)**
+
+Or run locally:
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Usage Tips
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Use the dropdown to explore different optimization landscapes.
+- Adjust the learning rate to see how it affects convergence.
+- Ctrl + Click on the surface to experiment with different starting points.
+- Use the orbit controls to view the surface from any angle.
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+Made with React, Three.js, Chakra UI, and Vite.
