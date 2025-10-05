@@ -48,19 +48,20 @@ const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
   },
   "saddle-point": {
     name: "Saddle Point",
-    description: "Hyperbolic paraboloid with saddle point at origin",
-    fn: (x, y) => x * x - y * y,
-    xRange: [-5, 5],
-    yRange: [-5, 5],
-    startPosition: [3.0, 2.5],
+    description: "Classic axis-aligned hyperbolic paraboloid (saddle)",
+    fn: (x, y) => y * y - x * x,
+    xRange: [-2, 2],
+    yRange: [-2, 2],
+    startPosition: [1.0, 1.0],
   },
   "hills-plateau": {
     name: "Hills and Plateau",
     description: "Multiple peaks with flat plateau regions",
     fn: (x, y) =>
-      Math.exp(-(x * x + y * y) / 2) +
-      0.5 * Math.exp(-((x - 1.5) * (x - 1.5) + (y + 1) * (y + 1)) / 1.5) +
-      0.3 * Math.exp(-((x + 1.5) * (x + 1.5) + (y - 1) * (y - 1)) / 2),
+      0.35 * (x * x + y * y) -
+      5 * Math.exp(-((x - 1.5) ** 2 + (y - 1.5) ** 2) / 0.5) -
+      3 * Math.exp(-((x + 1.5) ** 2 + (y + 1.5) ** 2) / 1.5) -
+      2 * Math.exp(-((x - 2.5) ** 2 + (y + 2.5) ** 2) / 0.3),
     xRange: [-5, 5],
     yRange: [-5, 5],
     startPosition: [3.5, 3.0],
@@ -184,7 +185,7 @@ export default function App() {
                 fn={currentSurface.fn}
                 xRange={currentSurface.xRange}
                 yRange={currentSurface.yRange}
-                steps={120}
+                steps={200}
                 zScale={0.2}
                 onSurfaceClick={(x, y) => {
                   setCustomStartPosition([x, y]);
@@ -192,6 +193,23 @@ export default function App() {
                   console.log("New position set:", [x, y]);
                 }}
               />
+              {/* Starting position marker */}
+              <mesh
+                position={[
+                  startPosition[0],
+                  currentSurface.fn(startPosition[0], startPosition[1]) * 0.2 +
+                    0.15,
+                  startPosition[1],
+                ]}
+              >
+                <sphereGeometry args={[0.1, 12, 12]} />
+                <meshStandardMaterial
+                  color="#666666"
+                  wireframe={true}
+                  transparent
+                  opacity={0.6}
+                />
+              </mesh>
               <DescentMarker
                 key={restartKey}
                 fn={currentSurface.fn}

@@ -50,8 +50,8 @@ export default function DescentMarker({
     <mesh ref={meshRef} position={[xy[0], z + 0.18, xy[1]]}>
       <sphereGeometry args={[0.18, 20, 20]} />
       <meshStandardMaterial
-        color="red"
-        emissive={"#330000"}
+        color="#14b8a6"
+        emissive={"#0d9488"}
         emissiveIntensity={0.5}
       />
     </mesh>
