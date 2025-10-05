@@ -32,6 +32,7 @@ export default function SurfaceMesh({
   onSurfaceClick,
   zScale = 0.2, // Default to 0.2 for a flatter surface
 }: SurfaceMeshProps) {
+  const surfaceRef = useRef<THREE.Mesh>(null);
   const geometry = useMemo(() => {
     const xMin = xRange[0];
     const xMax = xRange[1];
@@ -189,42 +190,19 @@ export default function SurfaceMesh({
       // Get the intersection point
       const point = event.point;
       if (point) {
-        // The intersection point is in world coordinates
-        // We need to account for the group rotation: [-Math.PI / 32, Math.PI / 32, 0]
-        // Transform the point back to the original coordinate system
-
-        // Create a rotation matrix to reverse the group rotation
-        const rotationX = Math.PI / 32;
-        const rotationY = -Math.PI / 32;
-
-        // Apply inverse rotation
-        const cosX = Math.cos(rotationX);
-        const sinX = Math.sin(rotationX);
-        const cosY = Math.cos(rotationY);
-        const sinY = Math.sin(rotationY);
-
-        // Rotate around Y axis first, then X axis (inverse of the group rotation)
-        let x = point.x;
-        let y = point.y;
-        let z = point.z;
-
-        // Inverse Y rotation
-        const tempX = x * cosY + z * sinY;
-        const tempZ = -x * sinY + z * cosY;
-        x = tempX;
-        z = tempZ;
-
-        // Inverse X rotation
-        const tempY = y * cosX - z * sinX;
-        const tempZ2 = y * sinX + z * cosX;
-        y = tempY;
-        z = tempZ2;
-
-        // Use (x, z) as the new (x, y) position for the function
+        // Prefer the main surface mesh's local space for consistent coordinates
+        const container =
+          surfaceRef.current ?? (event.object as THREE.Object3D);
+        // Convert the world-space intersection to the mesh's local space.
+        // In mesh local coordinates, geometry vertices are laid out as (x, fn(x,y)*zScale, y)
+        // so we can directly read the planar coordinates from (local.x, local.z).
+        const local = container.worldToLocal(point.clone());
+        const lx = local.x;
+        const lz = local.z;
         console.log("Raw intersection point:", point);
-        console.log("Transformed coordinates:", [x, z]);
-        console.log("Surface click at:", [x, z]);
-        onSurfaceClick(x, z);
+        console.log("Local (mesh) coordinates:", [lx, lz]);
+        console.log("Surface click at:", [lx, lz]);
+        onSurfaceClick(lx, lz);
       } else {
         console.log("No intersection point found");
       }
@@ -260,6 +238,7 @@ export default function SurfaceMesh({
   return (
     <>
       <mesh
+        ref={surfaceRef}
         geometry={geometry}
         rotation={[0, 0, 0]}
         name={name}
