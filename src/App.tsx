@@ -18,12 +18,119 @@ import { useState } from "react";
 const DEFAULT_LEARNING_RATE = 0.008;
 const DEFAULT_STEPS_PER_SECOND = 40;
 
+// Surface type definitions
+type SurfaceType =
+  | "global-minimum"
+  | "saddle-point"
+  | "hills-plateau"
+  | "local-minimum"
+  | "rosenbrock"
+  | "rastrigin"
+  | "ackley";
+
+interface SurfaceConfig {
+  name: string;
+  description: string;
+  fn: (x: number, y: number) => number;
+  xRange: [number, number];
+  yRange: [number, number];
+  startPosition: [number, number];
+}
+
+const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
+  "global-minimum": {
+    name: "Global Minimum",
+    description: "Simple quadratic with global minimum at origin",
+    fn: (x, y) => 0.5 * x * x + 0.2 * y * y + 0.5 * Math.sin(x) * Math.cos(y),
+    xRange: [-6, 6],
+    yRange: [-6, 6],
+    startPosition: [4.0, 3.0],
+  },
+  "saddle-point": {
+    name: "Saddle Point",
+    description: "Hyperbolic paraboloid with saddle point at origin",
+    fn: (x, y) => x * x - y * y,
+    xRange: [-5, 5],
+    yRange: [-5, 5],
+    startPosition: [3.0, 2.5],
+  },
+  "hills-plateau": {
+    name: "Hills and Plateau",
+    description: "Multiple peaks with flat plateau regions",
+    fn: (x, y) =>
+      Math.exp(-(x * x + y * y) / 2) +
+      0.5 * Math.exp(-((x - 1.5) * (x - 1.5) + (y + 1) * (y + 1)) / 1.5) +
+      0.3 * Math.exp(-((x + 1.5) * (x + 1.5) + (y - 1) * (y - 1)) / 2),
+    xRange: [-5, 5],
+    yRange: [-5, 5],
+    startPosition: [3.5, 3.0],
+  },
+  "local-minimum": {
+    name: "Local Minimum",
+    description: "Multiple local minima with one global minimum",
+    fn: (x, y) =>
+      // Main basin (deepest - global minimum)
+      0.3 * Math.exp(-((x + 2) * (x + 2) + (y - 2) * (y - 2)) / 1.5) +
+      // Secondary basin (medium depth)
+      0.6 * Math.exp(-((x - 1.5) * (x - 1.5) + (y + 1) * (y + 1)) / 2.5) +
+      // Tertiary basin (shallow)
+      0.8 * Math.exp(-((x + 0.5) * (x + 0.5) + (y - 3) * (y - 3)) / 3) +
+      // Background quadratic to create overall bowl shape
+      0.1 * (x * x + y * y) +
+      // Add some noise/ripples for complexity
+      0.2 * Math.sin(1.5 * x) * Math.cos(1.5 * y),
+    xRange: [-6, 6],
+    yRange: [-6, 6],
+    startPosition: [4.5, 4.0],
+  },
+  rosenbrock: {
+    name: "Rosenbrock Function",
+    description: "Classic optimization benchmark with narrow valley",
+    fn: (x, y) => 100 * Math.pow(y - x * x, 2) + Math.pow(1 - x, 2),
+    xRange: [-3, 3],
+    yRange: [-1, 5],
+    startPosition: [-2.0, 3.0],
+  },
+  rastrigin: {
+    name: "Rastrigin Function",
+    description: "Highly multimodal with many local minima",
+    fn: (x, y) =>
+      20 +
+      x * x +
+      y * y -
+      10 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y)),
+    xRange: [-5, 5],
+    yRange: [-5, 5],
+    startPosition: [3.5, 3.5],
+  },
+  ackley: {
+    name: "Ackley Function",
+    description: "Complex multimodal function with many local optima",
+    fn: (x, y) =>
+      -20 * Math.exp(-0.2 * Math.sqrt(0.5 * (x * x + y * y))) -
+      Math.exp(0.5 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y))) +
+      Math.E +
+      20,
+    xRange: [-6, 6],
+    yRange: [-6, 6],
+    startPosition: [4.5, 4.5],
+  },
+};
+
 export default function App() {
   const [learningRate, setLearningRate] = useState(DEFAULT_LEARNING_RATE);
   const [stepsPerSecond, setStepsPerSecond] = useState(
     DEFAULT_STEPS_PER_SECOND
   );
   const [restartKey, setRestartKey] = useState(0);
+  const [selectedSurface, setSelectedSurface] =
+    useState<SurfaceType>("global-minimum");
+  const [customStartPosition, setCustomStartPosition] = useState<
+    [number, number] | null
+  >(null);
+
+  const currentSurface = SURFACE_CONFIGS[selectedSurface];
+  const startPosition = customStartPosition || currentSurface.startPosition;
 
   return (
     <Grid
@@ -56,28 +163,42 @@ export default function App() {
           border="1px solid"
           borderColor="whiteAlpha.300"
         >
-          <Canvas camera={{ position: [4, 3, 5], fov: 100 }}>
+          <Canvas
+            camera={{ position: [4, 3, 5], fov: 100 }}
+            onPointerDown={(event) => {
+              console.log("Canvas click detected, ctrlKey:", event.ctrlKey);
+              if (event.ctrlKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                // We'll handle this in the SurfaceMesh component
+              }
+            }}
+          >
             <ambientLight intensity={0.6} />
             <directionalLight position={[5, 8, 5]} intensity={0.8} />
 
             <group rotation={[-Math.PI / 32, Math.PI / 32, 0]}>
-              <AxesGrid size={12} divisions={30} />
+              <AxesGrid size={24} divisions={30} />
               <SurfaceMesh
-                fn={(x, y) =>
-                  0.5 * x * x + 0.2 * y * y + 0.5 * Math.sin(x) * Math.cos(y)
-                }
-                xRange={[-4, 4]}
-                yRange={[-4, 4]}
+                name="surface-mesh"
+                fn={currentSurface.fn}
+                xRange={currentSurface.xRange}
+                yRange={currentSurface.yRange}
                 steps={120}
+                zScale={0.2}
+                onSurfaceClick={(x, y) => {
+                  setCustomStartPosition([x, y]);
+                  setRestartKey((k) => k + 1);
+                  console.log("New position set:", [x, y]);
+                }}
               />
               <DescentMarker
                 key={restartKey}
-                fn={(x, y) =>
-                  0.5 * x * x + 0.2 * y * y + 0.5 * Math.sin(x) * Math.cos(y)
-                }
-                start={[2.5, 2.0]}
+                fn={currentSurface.fn}
+                start={startPosition}
                 lr={learningRate}
                 stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
               />
             </group>
 
@@ -86,6 +207,11 @@ export default function App() {
               dampingFactor={0.08}
               minDistance={2}
               maxDistance={20}
+              enablePan={true}
+              enableZoom={true}
+              enableRotate={true}
+              onStart={() => console.log("OrbitControls started")}
+              onEnd={() => console.log("OrbitControls ended")}
             />
           </Canvas>
         </Box>
@@ -94,13 +220,94 @@ export default function App() {
           border="1px solid"
           borderColor="whiteAlpha.200"
           borderRadius="md"
-          p={3}
+          p={2}
           overflowY="auto"
         >
-          <VStack align="stretch" gap={3}>
-            <HStack gap={6} align="stretch" w="100%">
+          <VStack align="stretch" gap={2}>
+            {/* Surface Type Selector */}
+            <VStack gap={1} w="100%">
+              <HStack justify="space-between" w="100%" align="center">
+                <HStack gap={3} align="center">
+                  <Text color="gray.200" fontSize="sm" fontWeight="medium">
+                    Surface Type
+                  </Text>
+                  <select
+                    value={selectedSurface}
+                    onChange={(e) => {
+                      setSelectedSurface(e.target.value as SurfaceType);
+                      setCustomStartPosition(null); // Reset custom position when surface changes
+                      setRestartKey((k) => k + 1); // Restart animation when surface changes
+                    }}
+                    style={{
+                      width: "200px",
+                      height: "32px",
+                      backgroundColor: "#1a1b1e",
+                      border: "1px solid rgba(255, 255, 255, 0.3)",
+                      borderRadius: "6px",
+                      padding: "0 12px",
+                      color: "white",
+                      fontSize: "14px",
+                      outline: "none",
+                    }}
+                    onFocus={(e) => {
+                      (e.target as HTMLSelectElement).style.borderColor =
+                        "#38b2ac";
+                      (e.target as HTMLSelectElement).style.boxShadow =
+                        "0 0 0 1px #38b2ac";
+                    }}
+                    onBlur={(e) => {
+                      (e.target as HTMLSelectElement).style.borderColor =
+                        "rgba(255, 255, 255, 0.3)";
+                      (e.target as HTMLSelectElement).style.boxShadow = "none";
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.target as HTMLSelectElement).style.borderColor =
+                        "rgba(255, 255, 255, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.target as HTMLSelectElement).style.borderColor =
+                        "rgba(255, 255, 255, 0.3)";
+                    }}
+                  >
+                    {Object.entries(SURFACE_CONFIGS).map(([key, config]) => (
+                      <option
+                        key={key}
+                        value={key}
+                        style={{ backgroundColor: "#1a1b1e", color: "white" }}
+                      >
+                        {config.name}
+                      </option>
+                    ))}
+                  </select>
+                </HStack>
+                <Button
+                  size="sm"
+                  colorPalette="blue"
+                  variant="solid"
+                  borderRadius="6px"
+                  onClick={() => {
+                    setRestartKey((k) => k + 1);
+                  }}
+                  _hover={{
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  }}
+                  transition="all 0.2s ease"
+                  fontWeight="medium"
+                  px={3}
+                  py={1}
+                >
+                  Restart
+                </Button>
+              </HStack>
+              <Text color="gray.400" fontSize="xs">
+                💡 Ctrl + Click on the surface to set custom start position
+              </Text>
+            </VStack>
+
+            <HStack gap={4} align="stretch" w="100%">
               <Box flex="1" minW="200px">
-                <VStack gap={2} w="100%">
+                <VStack gap={1} w="100%">
                   <HStack justify="space-between" w="100%">
                     <Text color="gray.200" fontSize="sm">
                       Learning rate
@@ -133,7 +340,7 @@ export default function App() {
               </Box>
 
               <Box flex="1" minW="200px">
-                <VStack gap={2} w="100%">
+                <VStack gap={1} w="100%">
                   <HStack justify="space-between" w="100%">
                     <Text color="gray.200" fontSize="sm">
                       Steps per second
@@ -165,31 +372,35 @@ export default function App() {
                 </VStack>
               </Box>
             </HStack>
-            {/* add a button to reset the parameters */}
-            <HStack justify="flex-end" pt={2}>
-              <Button
-                size="sm"
-                colorPalette="blue"
-                variant="solid"
-                borderRadius="6px"
-                onClick={() => {
-                  // setSteps(120)
-                  // setLearningRate(0.01)
-                  // setStepsPerSecond(40)
-                  setRestartKey((k) => k + 1);
-                }}
-                _hover={{
-                  transform: "translateY(-1px)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                }}
-                transition="all 0.2s ease"
-                fontWeight="medium"
-                px={4}
-                py={2}
-              >
-                Restart
-              </Button>
-            </HStack>
+            {/* Custom position info and reset buttons */}
+            {customStartPosition && (
+              <HStack justify="space-between" w="100%" align="center">
+                <Text color="teal.300" fontSize="sm" fontWeight="medium">
+                  Custom Start Position: ({customStartPosition[0].toFixed(2)},{" "}
+                  {customStartPosition[1].toFixed(2)})
+                </Text>
+                <Button
+                  size="sm"
+                  colorPalette="orange"
+                  variant="outline"
+                  borderRadius="6px"
+                  onClick={() => {
+                    setCustomStartPosition(null);
+                    setRestartKey((k) => k + 1);
+                  }}
+                  _hover={{
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                  }}
+                  transition="all 0.2s ease"
+                  fontWeight="medium"
+                  px={3}
+                  py={1}
+                >
+                  Reset to Default
+                </Button>
+              </HStack>
+            )}
           </VStack>
         </Box>
       </GridItem>
