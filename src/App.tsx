@@ -13,7 +13,7 @@ import {
 import SurfaceMesh from "./components/SurfaceMesh";
 import AxesGrid from "./components/AxesGrid";
 import DescentMarker from "./components/DescentMarker";
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 const DEFAULT_LEARNING_RATE = 0.008;
 const DEFAULT_STEPS_PER_SECOND = 40;
