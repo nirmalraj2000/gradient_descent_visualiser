@@ -1,32 +1,16 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import {
-  Grid,
-  GridItem,
-  Box,
-  VStack,
-  HStack,
-  Text,
-  Slider,
-  Button,
-} from "@chakra-ui/react";
+import { Grid, GridItem, Box, VStack, HStack, Text, Slider, Button } from "@chakra-ui/react";
 import SurfaceMesh from "./components/SurfaceMesh";
 import AxesGrid from "./components/AxesGrid";
-import DescentMarker from "./components/DescentMarker";
+import OptimizerMarker from "./components/OptimizerMarker";
 import { useState } from "react";
 
 const DEFAULT_LEARNING_RATE = 0.008;
 const DEFAULT_STEPS_PER_SECOND = 40;
 
 // Surface type definitions
-type SurfaceType =
-  | "global-minimum"
-  | "saddle-point"
-  | "hills-plateau"
-  | "local-minimum"
-  | "rosenbrock"
-  | "rastrigin"
-  | "ackley";
+type SurfaceType = "global-minimum" | "saddle-point" | "hills-plateau" | "local-minimum" | "rosenbrock" | "rastrigin" | "ackley";
 
 interface SurfaceConfig {
   name: string;
@@ -58,10 +42,7 @@ const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
     name: "Hills and Plateau",
     description: "Multiple peaks with flat plateau regions",
     fn: (x, y) =>
-      0.35 * (x * x + y * y) -
-      5 * Math.exp(-((x - 1.5) ** 2 + (y - 1.5) ** 2) / 0.5) -
-      3 * Math.exp(-((x + 1.5) ** 2 + (y + 1.5) ** 2) / 1.5) -
-      2 * Math.exp(-((x - 2.5) ** 2 + (y + 2.5) ** 2) / 0.3),
+      0.35 * (x * x + y * y) - 5 * Math.exp(-((x - 1.5) ** 2 + (y - 1.5) ** 2) / 0.5) - 3 * Math.exp(-((x + 1.5) ** 2 + (y + 1.5) ** 2) / 1.5) - 2 * Math.exp(-((x - 2.5) ** 2 + (y + 2.5) ** 2) / 0.3),
     xRange: [-5, 5],
     yRange: [-5, 5],
     startPosition: [3.5, 3.0],
@@ -95,11 +76,7 @@ const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
   rastrigin: {
     name: "Rastrigin Function",
     description: "Highly multimodal with many local minima",
-    fn: (x, y) =>
-      20 +
-      x * x +
-      y * y -
-      10 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y)),
+    fn: (x, y) => 20 + x * x + y * y - 10 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y)),
     xRange: [-5, 5],
     yRange: [-5, 5],
     startPosition: [3.5, 3.5],
@@ -107,11 +84,7 @@ const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
   ackley: {
     name: "Ackley Function",
     description: "Complex multimodal function with many local optima",
-    fn: (x, y) =>
-      -20 * Math.exp(-0.2 * Math.sqrt(0.5 * (x * x + y * y))) -
-      Math.exp(0.5 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y))) +
-      Math.E +
-      20,
+    fn: (x, y) => -20 * Math.exp(-0.2 * Math.sqrt(0.5 * (x * x + y * y))) - Math.exp(0.5 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y))) + Math.E + 20,
     xRange: [-6, 6],
     yRange: [-6, 6],
     startPosition: [4.5, 4.5],
@@ -120,16 +93,19 @@ const SURFACE_CONFIGS: Record<SurfaceType, SurfaceConfig> = {
 
 export default function App() {
   const [learningRate, setLearningRate] = useState(DEFAULT_LEARNING_RATE);
-  const [stepsPerSecond, setStepsPerSecond] = useState(
-    DEFAULT_STEPS_PER_SECOND
-  );
+  const [stepsPerSecond, setStepsPerSecond] = useState(DEFAULT_STEPS_PER_SECOND);
   const [restartKey, setRestartKey] = useState(0);
-  const [selectedSurface, setSelectedSurface] =
-    useState<SurfaceType>("global-minimum");
-  const [customStartPosition, setCustomStartPosition] = useState<
-    [number, number] | null
-  >(null);
+  const [selectedSurface, setSelectedSurface] = useState<SurfaceType>("global-minimum");
+  const [customStartPosition, setCustomStartPosition] = useState<[number, number] | null>(null);
   const [controlsEnabled, setControlsEnabled] = useState(true);
+  const [enabledOptimizers, setEnabledOptimizers] = useState({
+    gd: true,
+    sgd: true,
+    momentum: true,
+    rmsprop: true,
+    adagrad: true,
+    adam: true,
+  });
 
   const currentSurface = SURFACE_CONFIGS[selectedSurface];
   const startPosition = customStartPosition || currentSurface.startPosition;
@@ -148,23 +124,8 @@ export default function App() {
       gap={2}
       p={2}
     >
-      <GridItem
-        colSpan={1}
-        rowSpan={2}
-        display="grid"
-        gridTemplateRows={{ base: "1fr 200px", md: "1fr 220px" }}
-        gap={2}
-      >
-        <Box
-          position="relative"
-          w="100%"
-          h="100%"
-          bg="#0f0f10"
-          borderRadius="md"
-          overflow="hidden"
-          border="1px solid"
-          borderColor="whiteAlpha.300"
-        >
+      <GridItem colSpan={1} rowSpan={2} display="grid" gridTemplateRows={{ base: "1fr 200px", md: "1fr 220px" }} gap={2}>
+        <Box position="relative" w="100%" h="100%" bg="#0f0f10" borderRadius="md" overflow="hidden" border="1px solid" borderColor="whiteAlpha.300">
           <Canvas
             camera={{ position: [4, 3, 5], fov: 100 }}
             onPointerDown={(event) => {
@@ -198,29 +159,87 @@ export default function App() {
                 }}
               />
               {/* Starting position marker */}
-              <mesh
-                position={[
-                  startPosition[0],
-                  currentSurface.fn(startPosition[0], startPosition[1]) * 0.2 +
-                    0.15,
-                  startPosition[1],
-                ]}
-              >
+              <mesh position={[startPosition[0], currentSurface.fn(startPosition[0], startPosition[1]) * 0.2 + 0.15, startPosition[1]]}>
                 <sphereGeometry args={[0.1, 12, 12]} />
-                <meshStandardMaterial
-                  color="#666666"
-                  wireframe={true}
-                  transparent
-                  opacity={0.6}
-                />
+                <meshStandardMaterial color="#666666" wireframe={true} transparent opacity={0.6} />
               </mesh>
-              <DescentMarker
-                key={restartKey}
+              <OptimizerMarker
+                key={`gd-${restartKey}`}
+                name="Gradient Descent"
+                optimizer="gd"
                 fn={currentSurface.fn}
                 start={startPosition}
                 lr={learningRate}
                 stepsPerSecond={stepsPerSecond}
                 zScale={0.2}
+                color="#14b8a6"
+                emissive="#0d9488"
+                enabled={enabledOptimizers.gd}
+              />
+              <OptimizerMarker
+                key={`sgd-${restartKey}`}
+                name="Stochastic Gradient Descent"
+                optimizer="sgd"
+                fn={currentSurface.fn}
+                start={startPosition}
+                lr={learningRate}
+                stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
+                color="#ef4444"
+                emissive="#7f1d1d"
+                enabled={enabledOptimizers.sgd}
+              />
+              <OptimizerMarker
+                key={`momentum-${restartKey}`}
+                name="Momentum"
+                optimizer="momentum"
+                fn={currentSurface.fn}
+                start={startPosition}
+                lr={learningRate}
+                stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
+                color="#3b82f6"
+                emissive="#1e3a8a"
+                enabled={enabledOptimizers.momentum}
+              />
+              <OptimizerMarker
+                key={`rmsprop-${restartKey}`}
+                name="RMSProp"
+                optimizer="rmsprop"
+                fn={currentSurface.fn}
+                start={startPosition}
+                lr={learningRate}
+                stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
+                color="#f59e0b"
+                emissive="#7c2d12"
+                enabled={enabledOptimizers.rmsprop}
+              />
+              <OptimizerMarker
+                key={`adagrad-${restartKey}`}
+                name="Adagrad"
+                optimizer="adagrad"
+                fn={currentSurface.fn}
+                start={startPosition}
+                lr={learningRate}
+                stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
+                color="#22c55e"
+                emissive="#14532d"
+                enabled={enabledOptimizers.adagrad}
+              />
+              <OptimizerMarker
+                key={`adam-${restartKey}`}
+                name="Adam"
+                optimizer="adam"
+                fn={currentSurface.fn}
+                start={startPosition}
+                lr={learningRate}
+                stepsPerSecond={stepsPerSecond}
+                zScale={0.2}
+                color="#a855f7"
+                emissive="#4c1d95"
+                enabled={enabledOptimizers.adam}
               />
             </group>
 
@@ -238,14 +257,7 @@ export default function App() {
             />
           </Canvas>
         </Box>
-        <Box
-          bg="#151517"
-          border="1px solid"
-          borderColor="whiteAlpha.200"
-          borderRadius="md"
-          p={2}
-          overflowY="auto"
-        >
+        <Box bg="#151517" border="1px solid" borderColor="whiteAlpha.200" borderRadius="md" p={2} overflowY="auto">
           <VStack align="stretch" gap={2}>
             {/* Surface Type Selector */}
             <VStack gap={1} w="100%">
@@ -273,31 +285,22 @@ export default function App() {
                       outline: "none",
                     }}
                     onFocus={(e) => {
-                      (e.target as HTMLSelectElement).style.borderColor =
-                        "#38b2ac";
-                      (e.target as HTMLSelectElement).style.boxShadow =
-                        "0 0 0 1px #38b2ac";
+                      (e.target as HTMLSelectElement).style.borderColor = "#38b2ac";
+                      (e.target as HTMLSelectElement).style.boxShadow = "0 0 0 1px #38b2ac";
                     }}
                     onBlur={(e) => {
-                      (e.target as HTMLSelectElement).style.borderColor =
-                        "rgba(255, 255, 255, 0.3)";
+                      (e.target as HTMLSelectElement).style.borderColor = "rgba(255, 255, 255, 0.3)";
                       (e.target as HTMLSelectElement).style.boxShadow = "none";
                     }}
                     onMouseEnter={(e) => {
-                      (e.target as HTMLSelectElement).style.borderColor =
-                        "rgba(255, 255, 255, 0.4)";
+                      (e.target as HTMLSelectElement).style.borderColor = "rgba(255, 255, 255, 0.4)";
                     }}
                     onMouseLeave={(e) => {
-                      (e.target as HTMLSelectElement).style.borderColor =
-                        "rgba(255, 255, 255, 0.3)";
+                      (e.target as HTMLSelectElement).style.borderColor = "rgba(255, 255, 255, 0.3)";
                     }}
                   >
                     {Object.entries(SURFACE_CONFIGS).map(([key, config]) => (
-                      <option
-                        key={key}
-                        value={key}
-                        style={{ backgroundColor: "#1a1b1e", color: "white" }}
-                      >
+                      <option key={key} value={key} style={{ backgroundColor: "#1a1b1e", color: "white" }}>
                         {config.name}
                       </option>
                     ))}
@@ -345,9 +348,7 @@ export default function App() {
                     max={0.1}
                     step={0.001}
                     value={[learningRate]}
-                    onValueChange={(details) =>
-                      setLearningRate(Number(details.value[0].toFixed(3)))
-                    }
+                    onValueChange={(details) => setLearningRate(Number(details.value[0].toFixed(3)))}
                     colorPalette="teal"
                     size="sm"
                     w="100%"
@@ -378,9 +379,7 @@ export default function App() {
                     max={120}
                     step={1}
                     value={[stepsPerSecond]}
-                    onValueChange={(details) =>
-                      setStepsPerSecond(details.value[0])
-                    }
+                    onValueChange={(details) => setStepsPerSecond(details.value[0])}
                     colorPalette="purple"
                     size="sm"
                     w="100%"
@@ -395,12 +394,53 @@ export default function App() {
                 </VStack>
               </Box>
             </HStack>
+            {/* Optimizer toggles */}
+            <VStack gap={2} align="stretch" w="100%">
+              <Text color="gray.200" fontSize="sm" fontWeight="medium">
+                Optimizers
+              </Text>
+              {[
+                { key: "gd", label: "Gradient Descent", color: "#14b8a6" },
+                { key: "sgd", label: "Stochastic Gradient Descent", color: "#ef4444" },
+                { key: "momentum", label: "Momentum", color: "#3b82f6" },
+                { key: "rmsprop", label: "RMSProp", color: "#f59e0b" },
+                { key: "adagrad", label: "Adagrad", color: "#22c55e" },
+                { key: "adam", label: "Adam", color: "#a855f7" },
+              ].map((opt) => (
+                <HStack key={opt.key} justify="space-between" w="100%">
+                  <HStack gap={2}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 10,
+                        height: 10,
+                        borderRadius: 9999,
+                        backgroundColor: opt.color,
+                      }}
+                    />
+                    <Text color="gray.300" fontSize="sm">
+                      {opt.label}
+                    </Text>
+                  </HStack>
+                  <input
+                    type="checkbox"
+                    checked={(enabledOptimizers as any)[opt.key]}
+                    onChange={(e) =>
+                      setEnabledOptimizers((prev) => ({
+                        ...prev,
+                        [opt.key]: e.target.checked,
+                      }))
+                    }
+                    style={{ width: 18, height: 18 }}
+                  />
+                </HStack>
+              ))}
+            </VStack>
             {/* Custom position info and reset buttons */}
             {customStartPosition && (
               <HStack justify="space-between" w="100%" align="center">
                 <Text color="teal.300" fontSize="sm" fontWeight="medium">
-                  Custom Start Position: ({customStartPosition[0].toFixed(2)},{" "}
-                  {customStartPosition[1].toFixed(2)})
+                  Custom Start Position: ({customStartPosition[0].toFixed(2)}, {customStartPosition[1].toFixed(2)})
                 </Text>
                 <Button
                   size="sm"
