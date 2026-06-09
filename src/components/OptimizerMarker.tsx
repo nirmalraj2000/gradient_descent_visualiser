@@ -33,24 +33,24 @@ export default function OptimizerMarker({ fn, start, lr, stepsPerSecond, zScale 
   const meshRef = useRef<Mesh>(null);
   const [xy, setXy] = useState<[number, number]>(start);
 
-  // Optimizer states
-  const [velocity, setVelocity] = useState<[number, number]>([0, 0]); // momentum/adam
-  const [gradSquareAvg, setGradSquareAvg] = useState<[number, number]>([0, 0]); // rmsprop
-  const [gradSquareSum, setGradSquareSum] = useState<[number, number]>([0, 0]); // adagrad
-  const [m, setM] = useState<[number, number]>([0, 0]); // adam first moment
-  const [v, setV] = useState<[number, number]>([0, 0]); // adam second moment
-  const [t, setT] = useState(0); // adam timestep
+  // Optimizer states using refs to avoid stale closures and side-effects in state updaters
+  const velocityRef = useRef<[number, number]>([0, 0]);
+  const gradSquareAvgRef = useRef<[number, number]>([0, 0]);
+  const gradSquareSumRef = useRef<[number, number]>([0, 0]);
+  const mRef = useRef<[number, number]>([0, 0]);
+  const vRef = useRef<[number, number]>([0, 0]);
+  const tRef = useRef<number>(0);
 
   const grad = useCentralDiffGradient(fn);
 
   useEffect(() => {
     setXy(start);
-    setVelocity([0, 0]);
-    setGradSquareAvg([0, 0]);
-    setGradSquareSum([0, 0]);
-    setM([0, 0]);
-    setV([0, 0]);
-    setT(0);
+    velocityRef.current = [0, 0];
+    gradSquareAvgRef.current = [0, 0];
+    gradSquareSumRef.current = [0, 0];
+    mRef.current = [0, 0];
+    vRef.current = [0, 0];
+    tRef.current = 0;
   }, [start, fn, optimizer]);
 
   useEffect(() => {
@@ -77,55 +77,52 @@ export default function OptimizerMarker({ fn, start, lr, stepsPerSecond, zScale 
           nx = x - lr * gx;
           ny = y - lr * gy;
         } else if (optimizer === "momentum") {
-          setVelocity(([vx, vy]) => {
-            const nvx = momentum * vx + lr * gx; // gradient ascent form inside, subtract later
-            const nvy = momentum * vy + lr * gy;
-            nx = x - nvx;
-            ny = y - nvy;
-            return [nvx, nvy];
-          });
+          const [vx, vy] = velocityRef.current;
+          const nvx = momentum * vx + lr * gx; // gradient ascent form inside, subtract later
+          const nvy = momentum * vy + lr * gy;
+          velocityRef.current = [nvx, nvy];
+          nx = x - nvx;
+          ny = y - nvy;
         } else if (optimizer === "rmsprop") {
-          setGradSquareAvg(([sx, sy]) => {
-            const nsx = decay * sx + (1 - decay) * (gx * gx);
-            const nsy = decay * sy + (1 - decay) * (gy * gy);
-            nx = x - (lr / Math.sqrt(nsx + eps)) * gx;
-            ny = y - (lr / Math.sqrt(nsy + eps)) * gy;
-            return [nsx, nsy];
-          });
+          const [sx, sy] = gradSquareAvgRef.current;
+          const nsx = decay * sx + (1 - decay) * (gx * gx);
+          const nsy = decay * sy + (1 - decay) * (gy * gy);
+          gradSquareAvgRef.current = [nsx, nsy];
+          nx = x - (lr / Math.sqrt(nsx + eps)) * gx;
+          ny = y - (lr / Math.sqrt(nsy + eps)) * gy;
         } else if (optimizer === "adagrad") {
-          setGradSquareSum(([sx, sy]) => {
-            const nsx = sx + gx * gx;
-            const nsy = sy + gy * gy;
-            nx = x - (lr / Math.sqrt(nsx + eps)) * gx;
-            ny = y - (lr / Math.sqrt(nsy + eps)) * gy;
-            return [nsx, nsy];
-          });
+          const [sx, sy] = gradSquareSumRef.current;
+          const nsx = sx + gx * gx;
+          const nsy = sy + gy * gy;
+          gradSquareSumRef.current = [nsx, nsy];
+          nx = x - (lr / Math.sqrt(nsx + eps)) * gx;
+          ny = y - (lr / Math.sqrt(nsy + eps)) * gy;
         } else if (optimizer === "adam") {
-          setT((tt) => tt + 1);
-          setM(([mx, my]) => {
-            const nmx = beta1 * mx + (1 - beta1) * gx;
-            const nmy = beta1 * my + (1 - beta1) * gy;
-            setV(([vx2, vy2]) => {
-              const nvx2 = beta2 * vx2 + (1 - beta2) * (gx * gx);
-              const nvy2 = beta2 * vy2 + (1 - beta2) * (gy * gy);
-              const tLocal = t + 1;
-              const mHatX = nmx / (1 - Math.pow(beta1, tLocal));
-              const mHatY = nmy / (1 - Math.pow(beta1, tLocal));
-              const vHatX = nvx2 / (1 - Math.pow(beta2, tLocal));
-              const vHatY = nvy2 / (1 - Math.pow(beta2, tLocal));
-              nx = x - (lr * mHatX) / (Math.sqrt(vHatX) + eps);
-              ny = y - (lr * mHatY) / (Math.sqrt(vHatY) + eps);
-              return [nvx2, nvy2];
-            });
-            return [nmx, nmy];
-          });
+          tRef.current += 1;
+          const [mx, my] = mRef.current;
+          const nmx = beta1 * mx + (1 - beta1) * gx;
+          const nmy = beta1 * my + (1 - beta1) * gy;
+          mRef.current = [nmx, nmy];
+
+          const [vx2, vy2] = vRef.current;
+          const nvx2 = beta2 * vx2 + (1 - beta2) * (gx * gx);
+          const nvy2 = beta2 * vy2 + (1 - beta2) * (gy * gy);
+          vRef.current = [nvx2, nvy2];
+
+          const tLocal = tRef.current;
+          const mHatX = nmx / (1 - Math.pow(beta1, tLocal));
+          const mHatY = nmy / (1 - Math.pow(beta1, tLocal));
+          const vHatX = nvx2 / (1 - Math.pow(beta2, tLocal));
+          const vHatY = nvy2 / (1 - Math.pow(beta2, tLocal));
+          nx = x - (lr * mHatX) / (Math.sqrt(vHatX) + eps);
+          ny = y - (lr * mHatY) / (Math.sqrt(vHatY) + eps);
         }
 
         return [nx, ny];
       });
     }, dt);
     return () => clearInterval(id);
-  }, [grad, lr, stepsPerSecond, optimizer, enabled, t]);
+  }, [grad, lr, stepsPerSecond, optimizer, enabled]);
 
   const z = fn(xy[0], xy[1]) * zScale;
 
